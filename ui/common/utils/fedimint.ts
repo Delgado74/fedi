@@ -628,6 +628,10 @@ export class FedimintBridge {
         })
     }
 
+    async getPublicFederations(forceUpdate: boolean) {
+        return this.rpcTyped('nostrGetPublicFederations', { forceUpdate })
+    }
+
     async listGateways(federationId: string) {
         return this.rpcTyped('listGateways', { federationId })
     }

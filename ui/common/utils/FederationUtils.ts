@@ -31,6 +31,7 @@ import {
 } from '../types/bindings'
 import { isDev } from './environment'
 import { FedimintBridge } from './fedimint'
+import { PublicFederationInfo } from '../types/bindings'
 import { makeLog } from './log'
 
 const log = makeLog('common/utils/FederationUtils')
@@ -177,7 +178,37 @@ const parseFederationsFromMeta = (
     return federations
 }
 
+async function fetchPublicFederationsFromNostr(): Promise<PublicFederation[]> {
+    try {
+        const fedimint = FedimintBridge.getInstance()
+        const nostrFeds = await fedimint.getPublicFederations(false)
+
+        if (!nostrFeds || nostrFeds.length === 0) return []
+
+        return nostrFeds.map((f: PublicFederationInfo) => ({
+            id: f.id,
+            name: f.description || f.name,
+            inviteCode: f.id,
+            meta: {
+                description: f.description,
+            },
+        }))
+    } catch (error) {
+        log.error('Failed to fetch federations from Nostr', error)
+        return []
+    }
+}
+
 export const fetchPublicFederations = async (): Promise<PublicFederation[]> => {
+    // Try Nostr first (decentralized, no VPN needed)
+    try {
+        const nostrFeds = await fetchPublicFederationsFromNostr()
+        if (nostrFeds.length > 0) return nostrFeds
+    } catch (error) {
+        log.warn('Nostr federation discovery failed, trying API', error)
+    }
+
+    // Fallback to centralized API
     try {
         const metaJson = await fetchExternalMetadata(PUBLIC_FEDERATIONS_API_URL)
         if (!metaJson) throw new Error('No public federations meta to read')
