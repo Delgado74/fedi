@@ -3,23 +3,23 @@ use std::collections::BTreeSet;
 use std::panic::PanicHookInfo;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use std::time::{Duration, UNIX_EPOCH};
 
-use anyhow::{bail, Context};
-use bitcoin::secp256k1::Message;
+use anyhow::{Context, bail};
 use bitcoin::Amount;
+use bitcoin::secp256k1::Message;
 use bridge::bg_matrix::BgMatrix;
 use bridge::onboarding::BridgeOnboarding;
 use bridge::providers::FederationProviderWrapper;
 use bridge::{Bridge, BridgeFull, RpcBridgeStatus, RuntimeExt as _};
 use bug_report::reused_ecash_proofs::SerializedReusedEcashProofs;
+use federations::Federations;
 use federations::federation_sm::FederationState;
+use federations::federation_v2::FederationV2;
 use federations::federation_v2::client::ClientExt;
 use federations::federation_v2::spv2_pay_address::Spv2PaymentAddress;
-use federations::federation_v2::FederationV2;
-use federations::Federations;
 use fedimint_client::db::ChronologicalOperationLogKey;
 use fedimint_connectors::ConnectorRegistry;
 use fedimint_core::core::OperationId;
@@ -29,18 +29,19 @@ use futures::Future;
 use lightning_invoice::Bolt11Invoice;
 use macro_rules_attribute::macro_rules_derive;
 use matrix::SendMessageData;
+use matrix_sdk::ruma::OwnedEventId;
 use matrix_sdk::ruma::api::client::authenticated_media::get_media_preview;
 use matrix_sdk::ruma::api::client::profile::get_profile;
 use matrix_sdk::ruma::api::client::push::Pusher;
-use matrix_sdk::ruma::events::room::power_levels::RoomPowerLevelsEventContent;
 use matrix_sdk::ruma::events::room::MediaSource;
-use matrix_sdk::ruma::OwnedEventId;
+use matrix_sdk::ruma::events::room::power_levels::RoomPowerLevelsEventContent;
 use mime::Mime;
 use multispend::db::RpcMultispendGroupStatus;
 use multispend::{
     GroupInvitation, GroupInvitationWithKeys, MsEventData, MultispendGroupVoteType,
     MultispendListedEvent, WithdrawRequestWithApprovals, WithdrawalResponseType,
 };
+use nostril::{Nostril, PublicFederationInfo};
 use rpc_types::communities::RpcCommunity;
 use rpc_types::error::{ErrorCode, RpcError};
 use rpc_types::event::{Event, EventSink, PanicEvent, SocialRecoveryEvent, TypedEventExt};
@@ -74,9 +75,9 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use stability_pool_client::common::{AccountId, AccountType, FiatAmount, FiatOrAll};
 pub use tokio;
-use tracing::{error, info, instrument, Level};
+use tracing::{Level, error, info, instrument};
 
-use crate::guardinito_client::{guardianito_get_or_create_bot, GuardianitoBot};
+use crate::guardinito_client::{GuardianitoBot, guardianito_get_or_create_bot};
 
 #[cfg(test)]
 pub mod tests;
@@ -861,6 +862,16 @@ async fn nostrCreateCommunity(
 #[macro_rules_derive(rpc_method!)]
 async fn nostrListOurCommunities(bridge: &BridgeFull) -> anyhow::Result<Vec<RpcCommunity>> {
     bridge.nostril.list_our_communities().await
+}
+
+use nostril::PublicFederationInfo;
+
+#[macro_rules_derive(rpc_method!)]
+async fn nostrGetPublicFederations(
+    bridge: &BridgeFull,
+    force_update: bool,
+) -> anyhow::Result<Vec<PublicFederationInfo>> {
+    bridge.nostril.get_public_federations(force_update).await
 }
 
 #[macro_rules_derive(rpc_method!)]
