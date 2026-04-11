@@ -23,6 +23,13 @@ use runtime::constants::{
 use runtime::storage::state::{CommunityInfo, CommunityJson, CommunityStatus};
 use tracing::{error, info, warn};
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PublicFederationInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
 pub struct Nostril {
     keys: Keys,
     // none when nostr feature is disabled
@@ -453,5 +460,42 @@ impl Nostril {
             &encryption_key.into_less_safe_key(),
         )?;
         Ok(general_purpose::STANDARD.encode(encrypted_bytes))
+    }
+
+    /// Fetch public federations from Nostr relays
+    ///
+    /// Returns a list of public federation info published by guardians
+    pub async fn get_public_federations(
+        &self,
+        force_update: bool,
+    ) -> anyhow::Result<Vec<PublicFederationInfo>> {
+        let Some(client) = &self.client else {
+            anyhow::bail!("nostr client feature flag is not enabled");
+        };
+
+        // Filter for federation discovery events (Kind 38000)
+        // References: https://github.com/fedimint/fedimint/pull/4636
+        let filter = Filter::new().kind(Kind::from_u16(38000));
+
+        let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
+
+        let mut federations = Vec::new();
+        for event in events {
+            // Extract federation ID from "d" tag
+            let federation_id = event.tags.iter().find_map(|tag| match tag {
+                Tag::Identifier(id) => Some(id.as_str().to_string()),
+                _ => None,
+            });
+
+            if let Some(id) = federation_id {
+                federations.push(PublicFederationInfo {
+                    id,
+                    name: event.author().to_bech32()?,
+                    description: event.content().to_string(),
+                });
+            }
+        }
+
+        Ok(federations)
     }
 }

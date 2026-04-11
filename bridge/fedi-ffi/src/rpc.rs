@@ -45,6 +45,7 @@ use multispend::{
     GroupInvitation, GroupInvitationWithKeys, MsEventData, MultispendGroupVoteType,
     MultispendListedEvent, WithdrawRequestWithApprovals, WithdrawalResponseType,
 };
+use nostril::{Nostril, PublicFederationInfo};
 use rpc_types::communities::RpcCommunity;
 use rpc_types::error::{ErrorCode, RpcError};
 use rpc_types::event::{Event, EventSink, PanicEvent, SocialRecoveryEvent, TypedEventExt};
@@ -915,6 +916,16 @@ async fn nostrCreateCommunity(
 #[macro_rules_derive(rpc_method!)]
 async fn nostrListOurCommunities(bridge: &BridgeFull) -> anyhow::Result<Vec<RpcCommunity>> {
     bridge.nostril.list_our_communities().await
+}
+
+use nostril::PublicFederationInfo;
+
+#[macro_rules_derive(rpc_method!)]
+async fn nostrGetPublicFederations(
+    bridge: &BridgeFull,
+    force_update: bool,
+) -> anyhow::Result<Vec<PublicFederationInfo>> {
+    bridge.nostril.get_public_federations(force_update).await
 }
 
 #[macro_rules_derive(rpc_method!)]

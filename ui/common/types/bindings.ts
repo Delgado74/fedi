@@ -592,6 +592,12 @@ export type RpcBridgeStatus =
   | { type: "onboarding"; stage: RpcOnboardingStage }
   | { type: "offboarding"; reason: BridgeOffboardingReason };
 
+export type PublicFederationInfo = {
+  id: string;
+  name: string;
+  description: string;
+};
+
 export type RpcCommunity = {
   communityInvite: RpcCommunityInvite;
   name: string;
@@ -1671,6 +1677,7 @@ export type RpcMethods = {
   nostrListOurCommunities: [nostrListOurCommunities, Array<RpcCommunity>];
   nostrEditCommunity: [nostrEditCommunity, null];
   nostrDeleteCommunity: [nostrDeleteCommunity, null];
+  nostrGetPublicFederations: [nostrGetPublicFederations, Array<PublicFederationInfo>];
   stabilityPoolAccountInfo: [
     stabilityPoolAccountInfo,
     RpcStabilityPoolAccountInfo,
@@ -3316,6 +3323,8 @@ export type nostrEncrypt = { pubkey: string; plaintext: string };
 export type nostrEncrypt04 = { pubkey: string; plaintext: string };
 
 export type nostrListOurCommunities = {};
+
+export type nostrGetPublicFederations = { forceUpdate: boolean };
 
 export type nostrRateFederation = {
   federationId: string;
