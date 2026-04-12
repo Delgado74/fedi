@@ -127,7 +127,7 @@ pub async fn fedimint_initialize_inner(
         .context("Failed to initialize storage")?;
 
     let connectors = fedimint_connectors::ConnectorRegistry::build_from_client_env()?
-        .iroh_next(false)
+        .iroh_next(true)
         .bind()
         .await
         .context("Failed to bind connectors")?;

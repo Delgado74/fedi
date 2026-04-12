@@ -99,7 +99,7 @@ pub async fn fedimint_initialize_inner(
     let storage = Arc::new(storage) as Storage;
 
     let connectors = fedimint_connectors::ConnectorRegistry::build_from_client_defaults()
-        .iroh_next(false)
+        .iroh_next(true)
         .bind()
         .await
         .context("Failed to bind connectors")?;
