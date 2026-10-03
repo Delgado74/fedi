@@ -482,18 +482,15 @@ impl Nostril {
         let mut federations = Vec::new();
         for event in events {
             // Extract federation ID from "d" tag
-            let federation_id = event.tags.iter().find_map(|tag| match tag {
-                Tag::Identifier(id) => Some(id.as_str().to_string()),
-                _ => None,
-            });
+            let Some(federation_id) = event.tags.identifier() else {
+                continue;
+            };
 
-            if let Some(id) = federation_id {
-                federations.push(PublicFederationInfo {
-                    id,
-                    name: event.author().to_bech32()?,
-                    description: event.content().to_string(),
-                });
-            }
+            federations.push(PublicFederationInfo {
+                id: federation_id.to_owned(),
+                name: event.pubkey.to_bech32()?,
+                description: event.content.clone(),
+            });
         }
 
         Ok(federations)

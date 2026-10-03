@@ -918,8 +918,6 @@ async fn nostrListOurCommunities(bridge: &BridgeFull) -> anyhow::Result<Vec<RpcC
     bridge.nostril.list_our_communities().await
 }
 
-use nostril::PublicFederationInfo;
-
 #[macro_rules_derive(rpc_method!)]
 async fn nostrGetPublicFederations(
     bridge: &BridgeFull,
@@ -2949,6 +2947,7 @@ rpc_methods!(RpcMethods {
     nostrDecrypt04,
     nostrRateFederation,
     nostrCreateCommunity,
+    nostrGetPublicFederations,
     nostrListOurCommunities,
     nostrEditCommunity,
     nostrDeleteCommunity,
