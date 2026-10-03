@@ -22,7 +22,7 @@ import {
     OnboardingMethod,
     RpcAppFlavor,
 } from '../types/bindings'
-import { FediModCacheMode } from '../types/fediInternal'
+import { FediModCacheMode, FederationDiscoveryMethod } from '../types/fediInternal'
 import { HomeNavigationTab } from '../types/linking'
 import { I18nLanguage } from '../types/localization'
 import { FedimintBridge } from '../utils/fedimint'
@@ -47,6 +47,7 @@ const initialState = {
     fedimodCacheEnabled: true,
     fedimodShowClearCacheButton: false,
     fedimodCacheMode: 'LOAD_DEFAULT' as FediModCacheMode,
+    federationDiscoveryMethod: 'auto' as FederationDiscoveryMethod,
     onchainDepositsEnabled: false,
     stableBalanceEnabled: false,
     language: null as string | null,
@@ -104,6 +105,12 @@ export const environmentSlice = createSlice({
         },
         setFediModCacheMode(state, action: PayloadAction<FediModCacheMode>) {
             state.fedimodCacheMode = action.payload
+        },
+        setFederationDiscoveryMethod(
+            state,
+            action: PayloadAction<FederationDiscoveryMethod>,
+        ) {
+            state.federationDiscoveryMethod = action.payload
         },
         setAmountInputType(
             state,
@@ -218,6 +225,10 @@ export const environmentSlice = createSlice({
                 state.manifoldCreationOverrideEnabled =
                     action.payload.manifoldCreationOverrideEnabled
             }
+            if (action.payload.federationDiscoveryMethod) {
+                state.federationDiscoveryMethod =
+                    action.payload.federationDiscoveryMethod
+            }
             if (action.payload.transactionDisplayType) {
                 state.transactionDisplayType =
                     action.payload.transactionDisplayType
@@ -253,6 +264,7 @@ export const {
     setFediModCacheEnabled,
     setFediModShowClearCacheButton,
     setFediModCacheMode,
+    setFederationDiscoveryMethod,
     setAmountInputType,
     setOnchainDepositsEnabled,
     setStableBalanceEnabled,
@@ -392,7 +404,7 @@ export const refreshOnboardingStatus = createAsyncThunk<
         throw new Error('Unknown bridge status type')
     }
 
-    dispatch(preloadFederationLists())
+    dispatch(preloadFederationLists(fedimint))
 })
 
 export const getBridgeInfo = createAsyncThunk<
@@ -504,6 +516,9 @@ export const selectFediModShowClearCacheButton = (s: CommonState) =>
 
 export const selectFediModCacheMode = (s: CommonState) =>
     s.environment.fedimodCacheMode
+
+export const selectFederationDiscoveryMethod = (s: CommonState) =>
+    s.environment.federationDiscoveryMethod
 
 export const selectOnchainDepositsEnabled = (s: CommonState) =>
     s.environment.onchainDepositsEnabled

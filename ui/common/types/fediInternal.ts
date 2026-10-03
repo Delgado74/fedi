@@ -91,6 +91,14 @@ export type FediModCacheMode =
     | 'LOAD_CACHE_ELSE_NETWORK'
     | 'LOAD_NO_CACHE'
 
+/**
+ * How to discover public federations when the user is joining one.
+ * 'auto' tries the centralized API first (fast, needs unrestricted
+ * internet) and falls back to Nostr (censorship-resistant, works without
+ * VPN). 'api' and 'nostr' pin a single method.
+ */
+export type FederationDiscoveryMethod = 'auto' | 'api' | 'nostr'
+
 export const miniAppPermissionTypes = [
     'manageCommunities',
     'manageInstalledMiniApps',

@@ -418,6 +418,7 @@ export interface StoredStateV49 extends Omit<StoredStateV48, 'version'> {
 export interface StoredStateV50 extends Omit<StoredStateV49, 'version'> {
     version: 50
     manifoldCreationOverrideEnabled: boolean
+    federationDiscoveryMethod?: 'auto' | 'api' | 'nostr'
 }
 
 /**

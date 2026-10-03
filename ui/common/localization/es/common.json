@@ -1326,6 +1326,10 @@
         },
         "settings": {
             "analytics-updated-error": "¡Ups! No se pudo guardar tu preferencia de consentimiento",
+            "federation-discovery-method": "Método de descubrimiento de federaciones",
+            "federation-discovery-method-auto": "Automático (API, luego Nostr)",
+            "federation-discovery-method-api": "Solo API",
+            "federation-discovery-method-nostr": "Solo Nostr",
             "app-settings": "Ajustes de la app",
             "currency-names": {
                 "ars": "Peso argentino",

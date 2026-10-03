@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native'
-import { Theme, useTheme } from '@rneui/themed'
+import { CheckBox, Text, Theme, useTheme } from '@rneui/themed'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Linking, StyleSheet, View } from 'react-native'
@@ -7,14 +7,20 @@ import { requestNotifications } from 'react-native-permissions'
 
 import { EULA_URL } from '@fedi/common/constants/tos'
 import { useNuxStep } from '@fedi/common/hooks/nux'
-import { selectDeveloperMode } from '@fedi/common/redux/environment'
+import {
+    selectDeveloperMode,
+    selectFederationDiscoveryMethod,
+    setFederationDiscoveryMethod,
+} from '@fedi/common/redux/environment'
+import { FederationDiscoveryMethod } from '@fedi/common/types/fediInternal'
 import { isDev, isExperimental } from '@fedi/common/utils/environment'
 
 import { usePinContext } from '../../../state/contexts/PinContext'
-import { useAppSelector } from '../../../state/hooks'
+import { useAppDispatch, useAppSelector } from '../../../state/hooks'
 import { NavigationHook } from '../../../types/navigation'
 import { useNotificationsPermission } from '../../../utils/hooks'
 import { useLaunchZendesk } from '../../../utils/hooks/support'
+import SvgImage from '../../ui/SvgImage'
 import SettingsItem from './SettingsItem'
 
 export const GeneralSettings = () => {
@@ -27,10 +33,20 @@ export const GeneralSettings = () => {
     const { launchZendesk } = useLaunchZendesk()
 
     const developerMode = useAppSelector(selectDeveloperMode)
+    const federationDiscoveryMethod = useAppSelector(
+        selectFederationDiscoveryMethod,
+    )
+    const dispatch = useAppDispatch()
     const [hasPerformedPersonalBackup] = useNuxStep(
         'hasPerformedPersonalBackup',
     )
     const { status } = usePinContext()
+
+    const discoveryMethods: FederationDiscoveryMethod[] = [
+        'auto',
+        'api',
+        'nostr',
+    ]
 
     const createOrManagePin = () => {
         if (hasPerformedPersonalBackup && status === 'set') {
@@ -139,6 +155,34 @@ export const GeneralSettings = () => {
                 actionIcon="ExternalLink"
                 onPress={() => Linking.openURL(EULA_URL)}
             />
+            <View style={style.switchLabelContainer}>
+                <Text small style={style.switchLabel}>
+                    {t('feature.settings.federation-discovery-method')}
+                </Text>
+            </View>
+            {discoveryMethods.map((method, index) => (
+                <View key={method}>
+                    <CheckBox
+                        key={index}
+                        checkedIcon={<SvgImage name="RadioSelected" />}
+                        uncheckedIcon={<SvgImage name="RadioUnselected" />}
+                        title={
+                            <Text
+                                style={style.checkboxText}
+                                numberOfLines={1}>
+                                {t(
+                                    `feature.settings.federation-discovery-method-${method}`,
+                                )}
+                            </Text>
+                        }
+                        checked={method === federationDiscoveryMethod}
+                        onPress={() =>
+                            dispatch(setFederationDiscoveryMethod(method))
+                        }
+                        containerStyle={style.checkboxContainer}
+                    />
+                </View>
+            ))}
         </View>
     )
 }
@@ -153,5 +197,20 @@ const styles = (theme: Theme) =>
         sectionTitle: {
             color: theme.colors.night,
             paddingVertical: theme.spacing.sm,
+        },
+        switchLabelContainer: {
+            maxWidth: '70%',
+        },
+        switchLabel: {
+            textAlign: 'left',
+            marginBottom: theme.spacing.xs,
+        },
+        checkboxContainer: {
+            margin: 0,
+            paddingHorizontal: 0,
+        },
+        checkboxText: {
+            paddingHorizontal: theme.spacing.md,
+            textAlign: 'left',
         },
     })

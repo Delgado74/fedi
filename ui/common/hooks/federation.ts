@@ -14,6 +14,7 @@ import {
     selectLastUsedFederation,
     selectStableBalance,
     selectStableBalanceEnabled,
+    selectFederationDiscoveryMethod,
     setPublicCommunities,
     setPublicFederations,
     setAutoSelectFederations,
@@ -366,18 +367,25 @@ export function useLatestPublicFederations() {
     const publicFederations = useCommonSelector(
         s => s.federation.publicFederations,
     )
+    const discoveryMethod = useCommonSelector(
+        selectFederationDiscoveryMethod,
+    )
+    const fedimint = useFedimint()
     const dispatch = useCommonDispatch()
     const [isFetching, setIsFetching] = useState(false)
 
     const findPublicFederations = useCallback(async () => {
         setIsFetching(true)
         try {
-            const federations = await fetchPublicFederations()
+            const federations = await fetchPublicFederations(
+                fedimint,
+                discoveryMethod,
+            )
             dispatch(setPublicFederations(federations))
         } finally {
             setIsFetching(false)
         }
-    }, [dispatch])
+    }, [discoveryMethod, dispatch, fedimint])
 
     useEffect(() => {
         findPublicFederations()

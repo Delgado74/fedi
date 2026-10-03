@@ -6,6 +6,8 @@ import {
     PUBLIC_COMMUNITIES_META_JSON_URL,
     PUBLIC_FEDERATIONS_API_URL,
     AUTOSELECT_FEDERATIONS_API_URL,
+    API_DISCOVERY_TIMEOUT_MS,
+    NOSTR_DISCOVERY_TIMEOUT_MS,
 } from '../constants/api'
 import {
     FederationMetadata,
@@ -22,6 +24,7 @@ import {
     SelectableCurrency,
     CommunityPreview,
     InviteCodeType,
+    FederationDiscoveryMethod,
 } from '../types'
 import {
     GuardianStatus,
@@ -29,15 +32,42 @@ import {
     RpcFederation,
     RpcFederationPreview,
     RpcLightningGatewayId,
+    PublicFederationInfo,
 } from '../types/bindings'
 import { FedimintBridge } from './fedimint'
-import { PublicFederationInfo } from '../types/bindings'
 import { makeLog } from './log'
 
 const log = makeLog('common/utils/FederationUtils')
 
 type ExternalMetaJson = Record<string, Community['meta'] | undefined>
 const AUTOSELECT_MIN_EXPIRY_SECONDS = 30 * 24 * 60 * 60
+
+/**
+ * Rejects `promise` if it does not settle within `timeoutMs`. The underlying
+ * operation is not cancelled (e.g. the bridge call keeps running), only our
+ * wait for it is bounded so discovery can fall through to the next method.
+ */
+const withTimeout = <T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    what: string,
+): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            reject(new Error(`${what} timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
+        promise.then(
+            value => {
+                clearTimeout(timeoutId)
+                resolve(value)
+            },
+            error => {
+                clearTimeout(timeoutId)
+                reject(error)
+            },
+        )
+    })
+}
 
 /**
  * Given a URL, attempt to fetch external metadata. Returns a promise
@@ -49,6 +79,7 @@ const AUTOSELECT_MIN_EXPIRY_SECONDS = 30 * 24 * 60 * 60
 const fetchExternalMetadata = async (
     externalUrl: string,
     onBackgroundSuccess?: (externalMeta: ExternalMetaJson) => void,
+    timeoutMs?: number,
 ): Promise<ExternalMetaJson | undefined> => {
     const attemptFetch = async (timeout?: number) => {
         let controller: AbortController | undefined
@@ -61,23 +92,27 @@ const fetchExternalMetadata = async (
             }, timeout)
         }
         log.info('Fetching metadata from', externalUrl)
-        const response = await fetch(externalUrl, {
-            cache: 'no-cache',
-            signal: controller?.signal,
-        })
-        const metaJson = await response.json()
-        if (timeoutId) {
-            clearTimeout(timeoutId)
+        try {
+            const response = await fetch(externalUrl, {
+                cache: 'no-cache',
+                signal: controller?.signal,
+            })
+            const metaJson = await response.json()
+            onBackgroundSuccess && onBackgroundSuccess(metaJson)
+            return metaJson
+        } finally {
+            if (timeoutId) {
+                clearTimeout(timeoutId)
+            }
         }
-        onBackgroundSuccess && onBackgroundSuccess(metaJson)
-        return metaJson
     }
 
     try {
         // If provided an onBackgroundSuccess, abort the initial fetch after
         // two seconds and try again shortly with no abort timer. Otherwise
-        // allow the initial and only request to run for as long as it takes.
-        const res = await attemptFetch(onBackgroundSuccess ? 2000 : undefined)
+        // allow the initial and only request to run for as long as vertical
+        // timeoutMs. If no timeoutMs is given it runs for as long as it takes.
+        const res = await attemptFetch(timeoutMs ?? (onBackgroundSuccess ? 2000 : undefined))
         return res
     } catch (err) {
         if (!onBackgroundSuccess) return
@@ -177,10 +212,15 @@ const parseFederationsFromMeta = (
     return federations
 }
 
-async function fetchPublicFederationsFromNostr(): Promise<PublicFederation[]> {
+async function fetchPublicFederationsFromNostr(
+    fedimint: FedimintBridge,
+): Promise<PublicFederation[]> {
     try {
-        const fedimint = FedimintBridge.getInstance()
-        const nostrFeds = await fedimint.getPublicFederations(false)
+        const nostrFeds = await withTimeout(
+            fedimint.getPublicFederations(false),
+            NOSTR_DISCOVERY_TIMEOUT_MS,
+            'Nostr federation discovery',
+        )
 
         if (!nostrFeds || nostrFeds.length === 0) return []
 
@@ -198,24 +238,35 @@ async function fetchPublicFederationsFromNostr(): Promise<PublicFederation[]> {
     }
 }
 
-export const fetchPublicFederations = async (): Promise<PublicFederation[]> => {
-    // Try Nostr first (decentralized, no VPN needed)
+async function fetchPublicFederationsFromApi(): Promise<PublicFederation[]> {
     try {
-        const nostrFeds = await fetchPublicFederationsFromNostr()
-        if (nostrFeds.length > 0) return nostrFeds
-    } catch (error) {
-        log.warn('Nostr federation discovery failed, trying API', error)
-    }
-
-    // Fallback to centralized API
-    try {
-        const metaJson = await fetchExternalMetadata(PUBLIC_FEDERATIONS_API_URL)
+        const metaJson = await fetchExternalMetadata(
+            PUBLIC_FEDERATIONS_API_URL,
+            undefined,
+            API_DISCOVERY_TIMEOUT_MS,
+        )
         if (!metaJson) throw new Error('No public federations meta to read')
         return parseFederationsFromMeta(metaJson)
     } catch (error) {
-        log.error('Failed to fetch public federations', error)
+        log.warn('Failed to fetch public federations from API, trying Nostr', error)
         return []
     }
+}
+
+export const fetchPublicFederations = async (
+    fedimint: FedimintBridge,
+    method: FederationDiscoveryMethod = 'auto',
+): Promise<PublicFederation[]> => {
+    if (method === 'auto' || method === 'api') {
+        // API first: it's fast and authoritative, but the endpoint is blocked
+        // in some regions without a VPN.
+        const apiFeds = await fetchPublicFederationsFromApi()
+        if (method === 'api' || apiFeds.length > 0) return apiFeds
+    }
+
+    // Fallback (or manual choice): Nostr discovery is decentralized and
+    // doesn't need the API endpoint to be reachable.
+    return fetchPublicFederationsFromNostr(fedimint)
 }
 
 export const fetchAutoSelectFederations = async (): Promise<

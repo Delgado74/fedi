@@ -646,11 +646,14 @@ export const preloadFederationLists = createAsyncThunk<
         publicFederations: PublicFederation[]
         autoSelectFederations: PublicFederation[]
     },
-    void,
+    FedimintBridge,
     { state: CommonState }
->('federation/preloadFederationLists', async () => {
+>('federation/preloadFederationLists', async (fedimint, { getState }) => {
     const [publicFederations, autoSelectFederations] = await Promise.all([
-        fetchPublicFederations(),
+        fetchPublicFederations(
+            fedimint,
+            getState().environment.federationDiscoveryMethod,
+        ),
         fetchAutoSelectFederations(),
     ])
     return { publicFederations, autoSelectFederations }

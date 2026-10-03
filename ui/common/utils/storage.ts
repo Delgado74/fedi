@@ -31,6 +31,7 @@ export function transformStateToStorage(state: CommonState): LatestStoredState {
         developerMode: state.environment.developerMode,
         manifoldCreationOverrideEnabled:
             state.environment.manifoldCreationOverrideEnabled,
+        federationDiscoveryMethod: state.environment.federationDiscoveryMethod,
         stableBalanceEnabled: state.environment.stableBalanceEnabled,
         language: state.environment.language,
         amountInputType: state.environment.amountInputType,
@@ -118,6 +119,7 @@ export function hasStorageStateChanged(
         ['environment', 'onchainDepositsEnabled'],
         ['environment', 'developerMode'],
         ['environment', 'manifoldCreationOverrideEnabled'],
+        ['environment', 'federationDiscoveryMethod'],
         ['environment', 'stableBalanceEnabled'],
         ['environment', 'transactionDisplayType'],
         ['environment', 'deviceId'],

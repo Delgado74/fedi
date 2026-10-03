@@ -6,6 +6,10 @@ import {
     SupportedCurrency,
 } from '../../../types'
 import {
+    PublicFederationInfo,
+} from '../../../types/bindings'
+import { NOSTR_DISCOVERY_TIMEOUT_MS } from '../../../constants/api'
+import {
     getFederationDefaultCurrency,
     getCommunityFediMods,
     shouldShowInviteCode,
@@ -14,6 +18,7 @@ import {
     switchGateway,
     findFederationByInviteCode,
 } from '../../../utils/FederationUtils'
+import { FedimintBridge } from '../../../utils/fedimint'
 
 const SAMPLE_CHAT_SERVER_DOMAIN = 'chat.dev.fedibtc.com'
 
@@ -246,9 +251,36 @@ describe('FederationUtils', () => {
     describe('federation fetchers', () => {
         const originalFetch = global.fetch
 
+        const nostrPublicFeds: PublicFederationInfo[] = [
+            {
+                id: 'nostr1',
+                name: 'Nostr Federation',
+                description: 'Found over Nostr',
+            },
+        ]
+
+        const makeFedimint = (nostrFeds: PublicFederationInfo[]) => {
+            const rpc = jest.fn(async (_method: string) => nostrFeds as any)
+            return { fedimint: new FedimintBridge(rpc), rpc }
+        }
+
+        const makePendingFedimint = () => {
+            let resolvePending: (value: unknown) => void = () => {}
+            const pending = new Promise<unknown>(resolve => {
+                resolvePending = resolve
+            })
+            const rpc = jest.fn(() => pending as any)
+            return {
+                fedimint: new FedimintBridge(rpc),
+                resolvePending,
+                pending,
+            }
+        }
+
         beforeEach(() => jest.clearAllMocks())
         afterEach(() => {
             global.fetch = originalFetch
+            jest.useRealTimers()
         })
 
         const mockFetch = (data: unknown) => {
@@ -257,16 +289,25 @@ describe('FederationUtils', () => {
             })
         }
 
-        it('should parse public federations from API response', async () => {
+        const mockFetchReject = () => {
+            global.fetch = jest
+                .fn()
+                .mockRejectedValue(new Error('Network error'))
+        }
+
+        it('should prefer the API when it responds', async () => {
             mockFetch(mockPublicFedMeta)
-            const result = await fetchPublicFederations()
+            const { fedimint, rpc } = makeFedimint(nostrPublicFeds)
+            const result = await fetchPublicFederations(fedimint)
             expect(result).toHaveLength(2)
             expect(result[0].name).toBe('Test Federation 1')
+            expect(rpc).not.toHaveBeenCalled()
         })
 
         it('should filter out non-public, incomplete, and expired federations', async () => {
             mockFetch(mockMixedMeta)
-            const result = await fetchPublicFederations()
+            const { fedimint } = makeFedimint([])
+            const result = await fetchPublicFederations(fedimint)
             expect(result).toHaveLength(2)
             const names = result.map(f => f.name)
             expect(names).not.toContain('Private Federation')
@@ -275,12 +316,58 @@ describe('FederationUtils', () => {
             expect(names).not.toContain('Prefixed Expired Federation')
         })
 
-        it('should return empty array on network failure', async () => {
-            global.fetch = jest
-                .fn()
-                .mockRejectedValue(new Error('Network error'))
-            expect(await fetchPublicFederations()).toEqual([])
+        it('should fall back to Nostr when the API is unreachable', async () => {
+            mockFetchReject()
+            const { fedimint, rpc } = makeFedimint(nostrPublicFeds)
+            const result = await fetchPublicFederations(fedimint)
+            expect(result).toHaveLength(1)
+            expect(result[0].name).toBe('Found over Nostr')
+            expect(rpc).toHaveBeenCalledWith('nostrGetPublicFederations', {
+                forceUpdate: false,
+            })
+        })
+
+        it('should fall back to Nostr when the API returns no federations', async () => {
+            mockFetch({})
+            const { fedimint, rpc } = makeFedimint(nostrPublicFeds)
+            const result = await fetchPublicFederations(fedimint)
+            expect(result).toHaveLength(1)
+            expect(rpc).toHaveBeenCalled()
+        })
+
+        it('should return empty when both API and Nostr fail', async () => {
+            mockFetchReject()
+            const { fedimint, rpc } = makeFedimint([])
+            expect(await fetchPublicFederations(fedimint)).toEqual([])
             expect(await fetchAutoSelectFederations()).toEqual([])
+            expect(rpc).toHaveBeenCalled()
+        })
+
+        it('should not fall back when method is pinned to api', async () => {
+            mockFetchReject()
+            const { fedimint, rpc } = makeFedimint(nostrPublicFeds)
+            const result = await fetchPublicFederations(fedimint, 'api')
+            expect(result).toEqual([])
+            expect(rpc).not.toHaveBeenCalled()
+        })
+
+        it('should only query Nostr when method is pinned to nostr', async () => {
+            const fetchSpy = jest.spyOn(global, 'fetch')
+            const { fedimint } = makeFedimint(nostrPublicFeds)
+            const result = await fetchPublicFederations(fedimint, 'nostr')
+            expect(result).toHaveLength(1)
+            expect(fetchSpy).not.toHaveBeenCalled()
+        })
+
+        it('should give up waiting for Nostr after the discovery timeout', async () => {
+            jest.useFakeTimers()
+            const { fedimint, resolvePending, pending } = makePendingFedimint()
+            const result = fetchPublicFederations(fedimint, 'nostr')
+            jest.advanceTimersByTime(NOSTR_DISCOVERY_TIMEOUT_MS)
+            await expect(result).resolves.toEqual([])
+            // Resolve the dangling bridge call so jest can exit cleanly.
+            resolvePending([])
+            await pending
         })
 
         it('should fetch auto-select federations from dedicated endpoint', async () => {
