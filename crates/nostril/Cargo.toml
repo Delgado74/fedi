@@ -21,3 +21,4 @@ reqwest = { workspace = true }
 runtime = { workspace = true }
 rpc-types = { workspace = true }
 nostr-sdk = { workspace = true }
+ts-rs = { workspace = true }

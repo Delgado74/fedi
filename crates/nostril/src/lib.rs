@@ -22,8 +22,11 @@ use runtime::constants::{
 };
 use runtime::storage::state::{CommunityInfo, CommunityJson, CommunityStatus};
 use tracing::{error, info, warn};
+use ts_rs::TS;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct PublicFederationInfo {
     pub id: String,
     pub name: String,
