@@ -1319,6 +1319,7 @@ export type RpcFiSetupPaymentFederationsResult =
 
 export type RpcFiStatus =
   | { type: "idle" }
+  | { type: "recovery"; error: RpcFiOperationError | null }
   | { type: "formation"; formation: RpcFiFormationSnapshot }
   | { type: "restored"; formation: RpcFiRestoredFormationSnapshot };
 
