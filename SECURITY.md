@@ -19,9 +19,32 @@ The bridge derives the stable FI key-family root at child id 17 of the app root
 and opens `fi-client` inside the globally reserved database prefix `0x07`.
 Manifold owns the protocol-signing, Nostr-author, and backup-encryption children
 below that scoped root. Changing either scope changes durable identity or
-storage ownership and requires an explicit migration. A restored-seed launch
-with no local FI state queries the canonical Manifold relays before allowing a
-new formation; absence of a backup is normal and does not fail bridge startup.
+storage ownership and requires an explicit migration. For a restored mnemonic in
+a fresh FI database and selected Manifold environment, `fi-client` checks the
+canonical relays before allowing a new formation. It claims its mutation guard
+before returning from open, and Fedi holds its RPC command queue until recovery
+completes. Manifold records a completed restored-or-no-backup check in its FI
+namespace, scoped by the environment within that database; a fresh installation
+or environment needs a new check. Authenticated import and completion commit
+atomically, and an internal FI reset clears both. Relay failures and incomplete
+reads never complete the check: they remain visible as retryable recovery state
+and keep FI creation gated without failing bridge startup. A successful empty
+result is a deployment-policy quorum of complete relay reads, not proof of
+absence on every relay.
+
+Fedi commits an internal environment switch and its queued FI wipe in one
+transaction. Switching away from Production is refused, and a namespace
+without a known non-Production owner cannot be wiped. Production selection is
+intentionally one-way even before a queued switch runs: this seed can have a
+Production formation on relays even when its local namespace is empty.
+
+On first upgraded internal startup, the legacy app-state selection (or the build
+default) moves into the bridge database. A nonempty ownerless namespace receives
+that owner only when no wipe is pending: the previous implementation queued a
+wipe before changing the selection and applied it before opening FI. An ownerless
+legacy pending wipe remains ambiguous and blocks FI startup without deleting
+data. There is no in-app escape from that state; reinstall is destructive and
+must not be presented as a value-safe recovery operation.
 
 Pinned Fleet Manager locators are untrusted dialing input plus the public key
 used to verify manager commitments. Parsing a locator is not a trust verdict.
@@ -53,8 +76,8 @@ driver-lease release reports an error, so that error cannot retain stale local
 authorization.
 
 Internal dev, test, and staging builds have one explicit test-only exception.
-Developer Settings may schedule the entire consumer-owned FI namespace for
-deletion on the next launch, before `fi-client` or its driver opens. The reset
+Developer Settings may schedule the non-Production FI namespace for deletion
+on the next launch, before `fi-client` or its driver opens. The reset
 marker lives outside that namespace and the marker plus namespace are cleared
 atomically. Edge and production builds must neither schedule nor apply it. This
 is a destructive test wipe, not abandonment or remote cleanup: in-flight Fleet
