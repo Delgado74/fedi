@@ -553,6 +553,9 @@ export const selectFeatureFlag = <T extends keyof FeatureCatalog>(
     featureFlag: T,
 ) => s.environment.featureFlags?.[featureFlag]
 
+export const selectFederationTransfersEnabled = (s: CommonState) =>
+    Boolean(selectFeatureFlag(s, 'federation_transfers'))
+
 export const selectMessageReactionsEnabled = (s: CommonState) =>
     Boolean(selectFeatureFlag(s, 'message_reactions'))
 
