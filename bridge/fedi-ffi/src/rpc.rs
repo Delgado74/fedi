@@ -420,6 +420,11 @@ async fn estimateLnFees(
 }
 
 #[macro_rules_derive(federation_rpc_method!)]
+async fn calculateMaxPayInvoice(federation: Arc<FederationV2>) -> anyhow::Result<RpcAmount> {
+    Ok(RpcAmount(federation.calculate_max_pay_invoice().await?))
+}
+
+#[macro_rules_derive(federation_rpc_method!)]
 async fn payInvoice(
     federation: Arc<FederationV2>,
     invoice: String,
@@ -2927,6 +2932,7 @@ rpc_methods!(RpcMethods {
     generateInvoice,
     parseInvoice,
     estimateLnFees,
+    calculateMaxPayInvoice,
     payInvoice,
     getPrevPayInvoiceResult,
     listGateways,
