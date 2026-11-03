@@ -341,6 +341,15 @@ describe('FederationUtils', () => {
             expect(rpc).not.toHaveBeenCalled()
         })
 
+        it('should fetch public federations from an override url', async () => {
+            mockFetch(mockPublicFedMeta)
+            await fetchPublicFederations('http://localhost:1234/feed.json')
+            expect(global.fetch).toHaveBeenCalledWith(
+                'http://localhost:1234/feed.json',
+                expect.anything(),
+            )
+        })
+
         it('should filter out non-public, incomplete, and expired federations', async () => {
             mockFetch(mockMixedMeta)
             const { fedimint } = makeFedimint([])
@@ -455,6 +464,26 @@ describe('FederationUtils', () => {
         it('returns undefined when no federation stores that code', () => {
             expect(
                 findFederationByInviteCode([baseFed], joinedFed.inviteCode),
+            ).toBeUndefined()
+        })
+
+        it('matches an older invite by federation id', () => {
+            expect(
+                findFederationByInviteCode(
+                    [baseFed, joinedFed],
+                    'fed11older',
+                    joinedFed.id,
+                ),
+            ).toEqual(joinedFed)
+        })
+
+        it('does not match a different federation id through its code', () => {
+            expect(
+                findFederationByInviteCode(
+                    [joinedFed],
+                    joinedFed.inviteCode,
+                    'other',
+                ),
             ).toBeUndefined()
         })
     })

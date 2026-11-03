@@ -84,6 +84,7 @@ export const GeneralSettings = () => {
                     icon="FediLogoIcon"
                     label={'Developer Settings'}
                     onPress={() => navigation.navigate('DeveloperSettings')}
+                    testID="DeveloperSettingsButton"
                 />
             )}
             <SettingsItem

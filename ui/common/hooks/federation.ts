@@ -9,6 +9,7 @@ import {
     joinFederation,
     rateFederation,
     selectFederationIds,
+    selectPublicFederations,
     selectFederations,
     selectOnchainDepositsEnabled,
     selectLastUsedFederation,
@@ -367,8 +368,9 @@ export function useCreatedCommunities(communityId?: string) {
 
 // Only v2+ federations use secrets derived from single seed
 export function useLatestPublicFederations() {
-    const publicFederations = useCommonSelector(
-        s => s.federation.publicFederations,
+    const publicFederations = useCommonSelector(selectPublicFederations)
+    const urlOverride = useCommonSelector(
+        s => s.federation.publicFederationsUrlOverride,
     )
     const discoveryMethod = useCommonSelector(
         selectFederationDiscoveryMethod,
@@ -381,6 +383,7 @@ export function useLatestPublicFederations() {
         setIsFetching(true)
         try {
             const federations = await fetchPublicFederations(
+                urlOverride,
                 fedimint,
                 discoveryMethod,
             )
@@ -388,7 +391,8 @@ export function useLatestPublicFederations() {
         } finally {
             setIsFetching(false)
         }
-    }, [discoveryMethod, dispatch, fedimint])
+    }, [discoveryMethod, dispatch, fedimint, urlOverride])
+>>>>>>> master
 
     useEffect(() => {
         findPublicFederations()

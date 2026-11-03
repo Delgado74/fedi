@@ -212,6 +212,7 @@ const parseFederationsFromMeta = (
     return federations
 }
 
+<<<<<<< HEAD
 async function fetchPublicFederationsFromNostr(
     fedimint: FedimintBridge,
 ): Promise<PublicFederation[]> {
@@ -244,6 +245,14 @@ async function fetchPublicFederationsFromApi(): Promise<PublicFederation[]> {
             PUBLIC_FEDERATIONS_API_URL,
             undefined,
             API_DISCOVERY_TIMEOUT_MS,
+=======
+export const fetchPublicFederations = async (
+    url: string | null = PUBLIC_FEDERATIONS_API_URL,
+): Promise<PublicFederation[]> => {
+    try {
+        const metaJson = await fetchExternalMetadata(
+            url || PUBLIC_FEDERATIONS_API_URL,
+>>>>>>> master
         )
         if (!metaJson) throw new Error('No public federations meta to read')
         return parseFederationsFromMeta(metaJson)
@@ -763,9 +772,14 @@ export const getPreviewFromLoadedFederation = (
 export const findFederationByInviteCode = (
     federations: LoadedFederation[],
     inviteCode: string,
+    federationId?: string,
 ) => {
     const code = inviteCode.toLowerCase()
-    return federations.find(f => f.inviteCode.toLowerCase() === code)
+    return federations.find(f =>
+        federationId
+            ? f.id === federationId
+            : f.inviteCode.toLowerCase() === code,
+    )
 }
 
 // Finds matching federation using url
