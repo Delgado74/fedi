@@ -15,6 +15,7 @@ import {
 } from './fedimint'
 import { HomeNavigationTab } from './linking'
 import { MatrixRoom } from './matrix'
+import { SendMethod } from './wallet'
 
 export interface StoredStateV0 {
     version: 0 // Not a real version, just implemented for demonstrative purposes
@@ -421,6 +422,11 @@ export interface StoredStateV50 extends Omit<StoredStateV49, 'version'> {
     federationDiscoveryMethod?: 'auto' | 'api' | 'nostr'
 }
 
+export interface StoredStateV51 extends Omit<StoredStateV50, 'version'> {
+    version: 51
+    lastUsedSendMethod: SendMethod | null
+}
+
 /**
  * Consolidated type for older storage versions (0-24).
  * These are grouped together to reduce union type computation that slows down TSC performance.
@@ -487,9 +493,10 @@ export type AnyStoredState =
     | StoredStateV48
     | StoredStateV49
     | StoredStateV50
+    | StoredStateV51
 
 /*** Alias for the latest version of stored state ***/
-export type LatestStoredState = StoredStateV50
+export type LatestStoredState = StoredStateV51
 
 export interface StorageApi {
     getItem(key: string): Promise<string | null>

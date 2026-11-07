@@ -25,6 +25,7 @@ import {
 import { FediModCacheMode, FederationDiscoveryMethod } from '../types/fediInternal'
 import { HomeNavigationTab } from '../types/linking'
 import { I18nLanguage } from '../types/localization'
+import { SEND_METHODS, SendMethod } from '../types/wallet'
 import { FedimintBridge } from '../utils/fedimint'
 import { makeLog } from '../utils/log'
 import {
@@ -68,6 +69,7 @@ const initialState = {
     eventListenersReady: false,
     lastUsedTab: HomeNavigationTab.Wallet,
     paymentType: 'bitcoin' as 'bitcoin' | 'stable-balance',
+    lastUsedSendMethod: null as SendMethod | null,
     latestAwareReleaseTag: null as string | null,
     versionTag: null as string | null,
     shouldRequestAppUpdate: false,
@@ -187,6 +189,9 @@ export const environmentSlice = createSlice({
         ) {
             state.paymentType = action.payload
         },
+        setLastUsedSendMethod(state, action: PayloadAction<SendMethod>) {
+            state.lastUsedSendMethod = action.payload
+        },
         setLatestAwareReleaseTag(state, action: PayloadAction<string | null>) {
             state.latestAwareReleaseTag = action.payload
         },
@@ -245,6 +250,10 @@ export const environmentSlice = createSlice({
             if (action.payload.paymentType !== undefined) {
                 state.paymentType = action.payload.paymentType
             }
+            // Stored state is untrusted, so anything but a known method is no preference
+            const storedSendMethod: unknown = action.payload.lastUsedSendMethod
+            state.lastUsedSendMethod =
+                SEND_METHODS.find(method => method === storedSendMethod) ?? null
             if (action.payload.latestAwareReleaseTag !== undefined) {
                 state.latestAwareReleaseTag =
                     action.payload.latestAwareReleaseTag
@@ -283,6 +292,7 @@ export const {
     setEventListenersReady,
     setLastUsedTab,
     setPaymentType,
+    setLastUsedSendMethod,
     setShouldRequestAppUpdate,
     setLatestAwareReleaseTag,
     setVersionTag,
@@ -591,6 +601,8 @@ export const selectEventListenersReady = (s: CommonState) =>
 
 export const selectLastUsedTab = (s: CommonState) => s.environment.lastUsedTab
 export const selectPaymentType = (s: CommonState) => s.environment.paymentType
+export const selectLastUsedSendMethod = (s: CommonState) =>
+    s.environment.lastUsedSendMethod
 
 export const selectLatestAwareReleaseTag = (s: CommonState) =>
     s.environment.latestAwareReleaseTag

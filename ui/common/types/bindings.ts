@@ -108,7 +108,9 @@ export type ErrorCode =
   | "communityDeleted"
   | "pinnedMessageLimitExceeded"
   | "matrixReactionLimitExceeded"
-  | { belowMinimumSendAmount: RpcAmount };
+  | { belowMinimumSendAmount: RpcAmount }
+  | "lnPayRefunded"
+  | "lnPayFundingRejected";
 
 export type Event =
   | { transaction: TransactionEvent }
@@ -2028,6 +2030,10 @@ export type RpcMethods = {
   matrixUnignoreUser: [matrixUnignoreUser, null];
   matrixListIgnoredUsers: [matrixListIgnoredUsers, Array<RpcUserId>];
   matrixRoomPreviewContent: [matrixRoomPreviewContent, Array<RpcTimelineItem>];
+  matrixRoomPreviewPowerLevels: [
+    matrixRoomPreviewPowerLevels,
+    RpcRoomPowerLevelsEventContent,
+  ];
   matrixPublicRoomInfo: [matrixPublicRoomInfo, RpcPublicRoomInfo];
   matrixGetRoomPreview: [matrixGetRoomPreview, RpcRoomPreview];
   matrixRoomMarkAsUnread: [matrixRoomMarkAsUnread, null];
@@ -2593,6 +2599,15 @@ export type RpcTransaction = {
   amount: RpcAmount;
   fediAppFeeStatus: RpcOperationFediFeeStatus | null;
   fediGuardianFeeStatus: RpcOperationFediFeeStatus | null;
+  /**
+   * Federation fees this operation actually paid, dust included, taken from
+   * its accepted transactions; `amount` already accounts for them. None
+   * when there is nothing to report: a federation whose modules charge
+   * nothing, or an operation older than the client's fee records. Present
+   * on any v2 module operation, even when zero, because mintv2 notes are
+   * not whole sats and such rows must be shown to the msat to add up.
+   */
+  federationFee: RpcAmount | null;
   txnNotes: string | null;
   txDateFiatInfo: FiatFXInfo | null;
   frontendMetadata: FrontendMetadata;
@@ -2703,6 +2718,15 @@ export type RpcTransactionListEntry = {
   amount: RpcAmount;
   fediAppFeeStatus: RpcOperationFediFeeStatus | null;
   fediGuardianFeeStatus: RpcOperationFediFeeStatus | null;
+  /**
+   * Federation fees this operation actually paid, dust included, taken from
+   * its accepted transactions; `amount` already accounts for them. None
+   * when there is nothing to report: a federation whose modules charge
+   * nothing, or an operation older than the client's fee records. Present
+   * on any v2 module operation, even when zero, because mintv2 notes are
+   * not whole sats and such rows must be shown to the msat to add up.
+   */
+  federationFee: RpcAmount | null;
   txnNotes: string | null;
   txDateFiatInfo: FiatFXInfo | null;
   frontendMetadata: FrontendMetadata;
@@ -3407,6 +3431,8 @@ export type matrixRoomMarkAsUnread = { roomId: RpcRoomId; unread: boolean };
 export type matrixRoomPinMessage = { roomId: RpcRoomId; eventId: RpcEventId };
 
 export type matrixRoomPreviewContent = { roomId: RpcRoomId };
+
+export type matrixRoomPreviewPowerLevels = { roomId: RpcRoomId };
 
 export type matrixRoomSendReceipt = { roomId: RpcRoomId; eventId: string };
 
